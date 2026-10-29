@@ -1,7 +1,8 @@
 // Văn phòng ảo 3D cho đội AI (Claude Code + Codex).
-// Máy chủ CHỈ ĐỌC: nhật ký phiên có sẵn trên máy (~/.claude, ~/.codex) và sổ điều phối của đội trong thư mục data/
+// Legacy đọc nhật ký phiên có sẵn (~/.claude, ~/.codex) và sổ điều phối trong data/.
+// Office API điều khiển project/task, SQLite và process Codex qua lib/office*.js.
 // (việc ưu tiên, gói việc, hòm thư, lượt DEV, cần anh, nội quy…; ghi bằng công cụ tools/vp.js). Mỗi giây đẩy trạng thái lên trình duyệt.
-// Không gửi dữ liệu ra ngoài, không sửa file nào của Claude/Codex, che mọi chuỗi giống khóa trước khi hiện.
+// Legacy không sửa nhật ký Claude/Codex. Managed runner dùng tài khoản/provider Codex local.
 "use strict";
 const http = require("http");
 const fs = require("fs");
@@ -15,6 +16,8 @@ const docs = require("./lib/docs");
 const hopthu = require("./lib/hopthu");
 const tongquan = require("./lib/tongquan");
 const { loadConfig } = require("./lib/config");
+const { Office } = require("./lib/office");
+const officeApi = require("./lib/office-api");
 
 const ROOT = __dirname;
 const CFG = loadConfig(ROOT);
@@ -24,6 +27,13 @@ const PORT = Number(process.env.PORT || CFG.port);
 const KEEP = CFG.keepHours * 3600000;
 const FIRST_READ = 8_000_000; // lần đầu chỉ đọc 8 MB cuối mỗi nhật ký
 const MAX_READ = 16_000_000;
+const office = new Office({ dataDir: DATA, policy: CFG.gitPolicy, ...CFG.runner, redact: maskDoc });
+const officeClients = new Set();
+setInterval(() => {
+  if (!officeClients.size) return;
+  const event = "data: " + JSON.stringify(office.view()) + "\n\n";
+  for (const client of officeClients) client.write(event);
+}, 1000);
 
 // ---------- tiện ích ----------
 const now = () => Date.now();
@@ -587,16 +597,23 @@ const LOGIN = `<!doctype html><meta charset="utf-8"><meta name="viewport" conten
 <form method="get" style="display:grid;gap:10px;width:min(320px,90vw)"><b style="font-size:18px">Nhập khóa xem văn phòng</b>
 <input name="key" type="password" autofocus style="padding:12px;border-radius:10px;border:1px solid #333;background:#111;color:#eee;font-size:16px">
 <button style="padding:12px;border-radius:10px;border:0;background:#ecc970;font-weight:700;font-size:15px">Vào xem</button></form></body>`;
-const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon" };
+const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2", ".woff": "font/woff", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon" };
 const json = (res, body) => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-cache" }); res.end(typeof body === "string" ? body : JSON.stringify(body)); };
 function sse(req, res, set, first) {
   res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive", "X-Accel-Buffering": "no" });
   res.write("data: " + JSON.stringify(first) + "\n\n"); set.add(res); req.on("close", () => set.delete(res));
 }
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   if (!authed(req, url)) { res.writeHead(401, { "Content-Type": "text/html; charset=utf-8" }); return res.end(LOGIN); }
   if (KEY && url.searchParams.has("key")) { res.writeHead(302, { "Set-Cookie": `vpk=${keyHash}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`, Location: url.pathname }); return res.end(); }
+  if (url.pathname.startsWith("/api/office/")) {
+    officeApi.handle(req, res, url, office, officeClients).catch(e => {
+      console.error("office API:", maskDoc(e.message));
+      if (!res.headersSent) { res.writeHead(500); res.end(); }
+    });
+    return;
+  }
   if (url.pathname === "/events") return sse(req, res, clients, snapshot());
   if (url.pathname === "/state") return json(res, snapshot());
   if (url.pathname === "/perf-events") return sse(req, res, perfClients, perfNow());
@@ -608,7 +625,7 @@ http.createServer((req, res) => {
     chat.handle(req, res, url, { CFG, DATA, agentByKey: (k) => byKey[k], onEvent: pushEvent, ht: hopthuNow }).then((r) => { if (r === false) { res.writeHead(404); res.end(); } }).catch(() => { if (!res.headersSent) { res.writeHead(500); res.end(); } });
     return;
   }
-  const file = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/+/, "");
+  const file = url.pathname === "/" ? "office.html" : url.pathname.replace(/^\/+/, "");
   const p = path.join(ROOT, "public", path.normalize(file).replace(/^(\.\.[\\/])+/, ""));
   if (!p.startsWith(path.join(ROOT, "public"))) { res.writeHead(403); return res.end(); }
   fs.readFile(p, (err, buf) => {
@@ -622,3 +639,16 @@ http.createServer((req, res) => {
   console.log(`  Sổ điều phối:     ${DATA}`);
   console.log(`  Khóa xem:         ${KEY ? "đang bật" : "tắt (chỉ máy này xem được nếu host = 127.0.0.1)"}\n`);
 });
+
+let shuttingDown = false;
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  server.close();
+  for (const client of [...clients, ...perfClients, ...officeClients]) client.end();
+  try { await office.close(); process.exit(0); }
+  catch (e) { console.error("shutdown:", e.message); process.exit(1); }
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+server.on("error", async e => { console.error(e.message); await office.close(); process.exit(1); });

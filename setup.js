@@ -5,6 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { gitPolicy } = require("./lib/config");
 const crypto = require("crypto");
 const readline = require("readline");
 
@@ -17,7 +18,7 @@ const flags = (n) => args.flatMap((a, i) => (a === "--" + n ? [args[i + 1]] : []
 const YES = args.includes("--yes");
 
 const major = +process.versions.node.split(".")[0];
-if (major < 18) { console.error(`Cần Node.js 18 trở lên (máy đang có ${process.versions.node}). Tải ở https://nodejs.org`); process.exit(1); }
+if (major < 22 || (major === 22 && Number(process.versions.node.split(".")[1]) < 13)) { console.error(`Cần Node.js 22.13 trở lên (máy đang có ${process.versions.node}). Tải ở https://nodejs.org`); process.exit(1); }
 
 function headText(f, n = 256 * 1024) { const fd = fs.openSync(f, "r"); try { const b = Buffer.alloc(n); const k = fs.readSync(fd, b, 0, n, 0); return b.subarray(0, k).toString("utf8"); } finally { fs.closeSync(fd); } }
 function walk(dir, out, depth = 0) { let e; try { e = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; } for (const x of e) { const p = path.join(dir, x.name); if (x.isDirectory() && depth < 4) walk(p, out, depth + 1); else if (x.name.endsWith(".jsonl")) out.push(p); } }
@@ -96,7 +97,8 @@ async function main() {
   // Đoạn luật cho agent, điền sẵn đường dẫn thật
   const slash = (x) => x.split(path.sep).join("/");
   const VP = slash(path.join(ROOT, "tools", "vp.js"));
-  const snippet = fs.readFileSync(path.join(MAU, "DOAN-CHEN-VAO-AGENTS.md"), "utf8").split("{{VP}}").join(VP).split("{{DATA}}").join(slash(DATA)).split("{{PORT}}").join(String(cfg.port));
+  const policy = gitPolicy();
+  const snippet = fs.readFileSync(path.join(MAU, "DOAN-CHEN-VAO-AGENTS.md"), "utf8").split("{{VP}}").join(VP).split("{{DATA}}").join(slash(DATA)).split("{{PORT}}").join(String(cfg.port)).split("{{MANAGER_USERNAME}}").join(policy.managerUsername).split("{{FEATURE_BASE}}").join(policy.featureBase);
   fs.writeFileSync(path.join(DATA, "DOAN-CHEN-VAO-AGENTS.md"), snippet);
   if (chen.startsWith("c") && projects.length) {
     const MARK = "## Văn phòng ảo và sổ điều phối của đội";

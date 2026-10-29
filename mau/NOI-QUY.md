@@ -4,7 +4,8 @@ Bộ luật chung cho mọi phiên Claude Code và Codex của dự án. Mỗi c
 Văn phòng hiện mục mới đổi trong 24 giờ bằng nhãn MỚI.
 
 ## 1. Ranh giới — luôn hỏi chủ văn phòng
-- Chỉ hỏi (ghi vào sổ Cần anh bằng `vp cananh hoi`) với: production; khóa hoặc secret mới; tiền, hoặc tiền AI vượt trần; xóa dữ liệu thật; đổi luật trong file này.
+- Luôn xác nhận task ID với quản lý khi nhận task mới theo quy trình Git trong đoạn hướng dẫn AGENTS.md/CLAUDE.md.
+- Ngoài xác nhận task ID, hỏi (ghi vào sổ Cần anh bằng `vp cananh hoi`) với: production; khóa hoặc secret mới; tiền, hoặc tiền AI vượt trần; xóa dữ liệu thật; đổi luật trong file này.
 - Mọi việc khác trong quyền đã cấp thì Quản lý hoặc Điều phối tự quyết rồi báo kết quả. Không trình "anh chọn a/b/c" cho việc trong quyền.
 - Không in, commit hay nhắn secret. Không hạ kiểm tra, tắt cổng hay nới giới hạn để che lỗi.
 

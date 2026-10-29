@@ -4,8 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Văn phòng AI</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root{--gold:#ecc970;--ok:#7ccf9b;--warn:#ecc970;--bad:#e8a39b;--mute:#a6a6a6;--mute2:#6b6b6b}
 *{box-sizing:border-box}
@@ -71,7 +69,16 @@ body.zoomed .bar{top:auto;bottom:14px;left:auto;right:14px;z-index:30}
 .card .m{color:var(--mute2);font-size:11.5px}
 @media (max-width: 760px){ .zbtn{padding:8px 9px!important;font-size:11px!important} .k{display:none} .ttl small{display:none} .clock{font-size:16px} .btn{padding:9px 11px;font-size:12px} .links a:first-child{display:none} }
 </style>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+<link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/400.css">
+<link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/500.css">
+<link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/600.css">
+<link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/700.css">
+<link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/800.css">
+<link rel="stylesheet" href="/vendor/@fontsource/jetbrains-mono/400.css">
+<link rel="stylesheet" href="/vendor/@fontsource/jetbrains-mono/500.css">
+<link rel="stylesheet" href="/vendor/@fontsource/jetbrains-mono/600.css">
+<link rel="stylesheet" href="/vendor/@fontsource/jetbrains-mono/700.css">
 </head>
 <body>
 <div id="world"><div id="css3d"></div><div id="gl"></div><div id="lbl"></div></div>
@@ -89,7 +96,7 @@ body.zoomed .bar{top:auto;bottom:14px;left:auto;right:14px;z-index:30}
 </div>
 <div class="card" id="card"></div>
 <div class="hint" id="hint">Kéo để xoay · chụm/cuộn để phóng to · bấm vào tên một người để xem họ đang làm gì</div>
-<div class="links"><a href="tongquan.html">Tổng quan</a><a href="hopthu.html">Hòm thư</a><a href="hieusuat.html">Đánh giá nhân sự</a><a href="board.html">Mở bảng điều hành toàn màn hình</a><a href="2d.html">Sơ đồ 2D</a></div>
+<div class="links"><a href="/office.html">Quản lý project & giao việc</a><a href="tongquan.html">Tổng quan</a><a href="hopthu.html">Hòm thư</a><a href="hieusuat.html">Đánh giá nhân sự</a><a href="board.html">Mở bảng điều hành toàn màn hình</a><a href="2d.html">Sơ đồ 2D</a></div>
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
