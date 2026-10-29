@@ -1,5 +1,74 @@
 # Văn phòng ảo 3D cho đội AI
 
+## MVP quản lý project với Codex CLI
+
+Trang mặc định `http://localhost:7788/` là văn phòng quản lý project.
+Mỗi repo có một phòng và một nhân viên có tên riêng, tồn tại sau khi khởi động lại.
+Giao diện theo dõi phiên cũ vẫn ở `/index.html`.
+
+Cần **Node.js >= 22.13** để dùng SQLite tích hợp, Git và Codex CLI đã cài/đăng nhập trên cùng máy.
+Không cần MongoDB hoặc database server.
+
+```bash
+npm ci
+cp .env.example .env
+npm run setup
+npm start
+```
+
+1. Bấm **Thêm project**, nhập tên, đường dẫn tuyệt đối đến repo Git local, tên nhân viên, remote và nhánh gốc.
+2. Bấm **Giao việc**, nhập yêu cầu. Nhân viên luôn hỏi xác nhận task ID ở một bước riêng.
+3. Nhập task ID và xác nhận để chạy. Runner fetch remote, dùng feature hiện có hoặc tạo feature từ nhánh gốc, rồi tạo nhánh cá nhân và worktree riêng.
+4. Xem log, câu hỏi và báo cáo trong task. Trả lời hoặc yêu cầu sửa để tiếp tục đúng session và worktree.
+5. Bấm **Dừng task** để dừng process Codex cùng process con. Mỗi project chỉ có một task chạy; project khác có thể chạy song song.
+
+**Phạm vi bàn giao hiện tại:** Codex sửa code và chạy kiểm tra, để lại diff trong worktree cho quản lý review.
+Runner chưa tự commit/push hoặc tạo/đồng bộ MR. Ba cặp MR được lưu là pending, không bị báo là đã tạo.
+Trạng thái `review` nghĩa là chờ review code, không phải hoàn tất quy trình Git.
+Những task đã chờ review không khóa task mới; task sau bắt đầu từ feature, không tự lấy diff chưa được merge của task trước.
+
+### Cấu hình runner trong `.env`
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `VP_CODEX_BIN` | `codex` | Executable/đường dẫn Codex, không chứa tham số shell |
+| `VP_CODEX_MODEL` | trống | Dùng model cấu hình trong Codex local |
+| `VP_MAX_CONCURRENT` | `2` | Số project chạy đồng thời (1–8) |
+| `VP_RUN_TIMEOUT_MINUTES` | `60` | Thời gian tối đa mỗi lượt Codex |
+| `VP_CODEX_NETWORK` | `0` | Đặt `1` để cho phép lệnh trong sandbox dùng mạng |
+
+Runner gọi `codex --ask-for-approval never --sandbox workspace-write exec --json ... -`,
+truyền prompt qua stdin và đọc các event JSONL. Lượt tiếp theo dùng `exec resume <session-id>`.
+Lệnh không được sandbox cho phép sẽ trả lỗi cho agent; không có hộp duyệt quyền tương tác trong bản này.
+Nếu worktree cần dependency hoặc file cấu hình bị Git ignore, cần chuẩn bị riêng trong worktree; runner chưa tự sao chép `.env` của project.
+Dùng **Kiểm tra Codex** để kiểm tra executable; xác thực được kiểm tra khi chạy task.
+
+### Dữ liệu và khôi phục
+
+Dữ liệu ở `data/office/`: `office.sqlite` (project, nhân viên, task, lượt chạy), JSONL log, báo cáo và `worktrees/`.
+Giữ cả thư mục khi backup. Không xóa worktree còn chứa thay đổi chưa commit. Chưa có chức năng xóa project/worktree.
+Một database chỉ được một server sử dụng. Đóng ứng dụng bằng Ctrl+C để dừng các process con.
+Khi mở lại, task chưa hoàn thành được đánh dấu **Bị gián đoạn**, không tự chạy lại. Bấm tiếp tục để khôi phục.
+Nếu server bị kill cưỡng bức và process Codex cũ còn sống, startup sẽ nêu PID và yêu cầu dừng process đó trước để tránh chạy trùng.
+Bản runner này được kiểm thử trên Linux; Windows nên chạy bằng WSL2 (chưa xác nhận shim `.cmd` của npm native Windows).
+
+API điều khiển `/api/office/*` chỉ nhận kết nối loopback với host `localhost`/`127.0.0.1`/`[::1]`,
+kiểm tra origin và header khi ghi. Chế độ xem phiên cũ từ xa vẫn độc lập.
+Ứng dụng không tự gọi API AI riêng, nhưng Codex CLI gửi context đến provider theo cấu hình/tài khoản của bạn.
+
+### Kiểm tra
+
+```bash
+npm test
+```
+
+Test dùng Git repo/remote local và CLI fixture, không gọi model, không dùng token hay repository thật.
+Bao phủ xác nhận ID, worktree, resume, FIFO/concurrency, dừng cây process, lỗi, persistence, khóa một server và bảo vệ API.
+
+---
+
+## Chế độ theo dõi phiên có sẵn (legacy)
+
 Biến các phiên **Claude Code** và **Codex** trên máy bạn thành một công ty AI 3D sống động, kèm đủ bộ sổ điều phối như một đội thật: việc ưu tiên, gói việc, hòm thư, lượt DEV, sổ "Cần anh", nội quy, đội ngũ, bài học, đánh giá nhân sự và tiền AI.
 
 Mỗi phiên là một nhân viên robot có bàn riêng:
@@ -8,7 +77,7 @@ Mỗi phiên là một nhân viên robot có bàn riêng:
 - bạn giao việc thì cả nhóm ra phòng họp;
 - ai đang giữ môi trường DEV thì đứng giữa Phòng DEV, ai đang chờ thì xếp hàng.
 
-> **Chỉ đọc, chạy tại máy bạn.** Văn phòng chỉ đọc nhật ký mà Claude Code và Codex vốn tự ghi (`~/.claude`, `~/.codex`) và sổ của đội trong thư mục `data/`. Nó không gửi dữ liệu đi đâu và không cần khóa API. Mọi chuỗi giống khóa đều được che trước khi hiện. Kho không dùng thư viện ngoài nào, nên không cần `npm install`.
+> **Chế độ legacy chỉ đọc nhật ký, chạy tại máy bạn.** Văn phòng chỉ đọc nhật ký mà Claude Code và Codex vốn tự ghi (`~/.claude`, `~/.codex`) và sổ của đội trong thư mục `data/`. Nó không gửi dữ liệu đi đâu và không cần khóa API. Mọi chuỗi giống khóa đều được che trước khi hiện. Three.js và font được cài bằng npm, phục vụ từ máy local; trình duyệt không cần tải CDN.
 
 ---
 
@@ -16,7 +85,7 @@ Mỗi phiên là một nhân viên robot có bàn riêng:
 
 Mở Claude Code hoặc Codex **trong thư mục dự án của bạn** và gõ:
 
-> Cài văn phòng ảo cho dự án này theo hướng dẫn ở https://github.com/vinaichatbot-rgb/van-phong-ao-3d (đọc file HUONG-DAN-CHO-AGENT.md)
+> Cài văn phòng ảo cho dự án này theo hướng dẫn ở https://github.com/tiennm0510/van-phong-ao-3d (đọc file HUONG-DAN-CHO-AGENT.md)
 
 Agent sẽ tự làm các bước sau. Những bước có thay đổi bên ngoài thì nó sẽ hỏi bạn trước:
 
@@ -30,11 +99,13 @@ Agent sẽ tự làm các bước sau. Những bước có thay đổi bên ngo�
 
 ## Cài tay
 
-Cần **Node.js 18+** (https://nodejs.org), cùng với **Claude Code** hoặc **Codex** đã dùng trên máy.
+Cần **Node.js 22.13+** (https://nodejs.org), cùng với **Claude Code** hoặc **Codex** đã dùng trên máy.
 
 ```bash
-git clone https://github.com/vinaichatbot-rgb/van-phong-ao-3d.git
+git clone https://github.com/tiennm0510/van-phong-ao-3d.git
 cd van-phong-ao-3d
+npm install
+cp .env.example .env
 npm run setup
 npm start
 ```
@@ -130,3 +201,39 @@ HUONG-DAN-CHO-AGENT.md hướng dẫn để agent tự cài từ link này
 ```
 
 Giấy phép MIT.
+
+## Cấu hình Git cho nhân viên dự án (DA-int)
+
+`.env` được đọc khi chạy setup, server và công cụ `vp`; biến môi trường của process được ưu tiên hơn `.env`:
+
+```dotenv
+VP_MANAGER_USERNAME=tiennm55
+VP_FEATURE_BASE=master
+```
+
+Tên nhân viên vẫn tùy chỉnh bằng `staff[].name` trong `config.json`, độc lập với username Git.
+Nhân viên luôn hỏi quản lý xác nhận task ID khi nhận task mới. Nhánh cá nhân là
+`<username>/<task-id>`, nhánh feature là `feature/<task-id>`.
+Nếu feature chưa có, tạo từ nhánh remote cấu hình bởi `VP_FEATURE_BASE`.
+Phải có đủ ba MR/PR, không tự merge:
+
+| Source | Target |
+|---|---|
+| `<username>/<task-id>` | `feature/<task-id>` |
+| `feature/<task-id>` | `master` |
+| `feature/<task-id>` | `testing` |
+
+Ví dụ task `DA-int`: `tiennm55/DA-int` → `feature/DA-int`, sau đó feature → master và testing.
+Hai MR từ feature là Draft; giữ source branch. Nếu chưa có diff thì ghi chờ và tạo bổ sung sau khi MR cá nhân được quản lý merge.
+Username không đổi danh tính tác giả commit; danh tính đó vẫn theo cấu hình Git của repo.
+
+Rule chi tiết nằm trong `mau/DOAN-CHEN-VAO-AGENTS.md`. Chạy lại `npm run setup`
+để tạo `data/DOAN-CHEN-VAO-AGENTS.md` với giá trị môi trường hiện tại.
+Setup không tự ghi đè đoạn luật đã có trong AGENTS.md/CLAUDE.md của project;
+với project đã cài, thay thế thủ công đoạn luật cũ bằng đoạn vừa tạo sau khi đổi env.
+Nội quy trong `data/NOI-QUY.md` đã có cũng không tự bị ghi đè; đồng bộ ngoại lệ xác nhận task ID từ mẫu nếu cần.
+
+**Quy trình Git:** runner đã khởi chạy Codex và tạo nhánh/worktree sau xác nhận ID. Các rule MR là hướng dẫn cho giai đoạn bàn giao tiếp theo; chưa có watcher hoặc bộ tự động push/tạo MR.
+
+`npm install`/`npm ci` chuẩn bị tài nguyên local qua postinstall; `npm start` cũng chuẩn bị lại.
+Không commit `public/vendor/` hay `.env`. Dùng `npm ci` để cài đúng lockfile.

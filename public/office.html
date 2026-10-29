@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Văn phòng · Dự án & nhân viên</title>
+  <link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/400.css">
+  <link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/500.css">
+  <link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/600.css">
+  <link rel="stylesheet" href="/vendor/@fontsource/be-vietnam-pro/700.css">
+  <link rel="stylesheet" href="/vendor/@fontsource/jetbrains-mono/400.css">
+  <link rel="stylesheet" href="/office.css">
+  <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><span class="brand-icon">V</span><span>Văn phòng<span class="brand-sub">Nơi các dự án chuyển động</span></span></a>
+  <div class="connection"><i id="connection-dot"></i><span id="connection">Đang kết nối</span></div>
+  <nav><a href="/index.html">Theo dõi phiên cũ ↗</a><button id="health" class="quiet">Kiểm tra Codex</button><button id="add-project" class="primary">＋ Thêm project</button></nav>
+</header>
+<main class="layout">
+  <aside class="sidebar">
+    <div class="eyebrow">KHÔNG GIAN LÀM VIỆC</div>
+    <h2>Các phòng <span id="project-count" class="count">0</span></h2>
+    <div id="project-list" class="project-list"></div>
+    <div class="sidebar-foot"><span class="green-dot"></span> Local workspace<br><small id="settings">Mỗi project · một nhân viên</small></div>
+  </aside>
+  <section class="workspace">
+    <div class="page-heading"><div><div class="eyebrow">TỔNG QUAN VĂN PHÒNG</div><h1>Mỗi dự án, một người đồng hành.</h1></div><div class="stats"><span><b id="working-count">0</b>đang làm</span><span><b id="waiting-count">0</b>cần bạn</span></div></div>
+    <section class="scene-wrap" aria-label="Văn phòng 3D">
+      <div id="scene"></div><div id="scene-fallback" hidden>Không mở được WebGL. Bạn vẫn có thể quản lý phòng và task bên dưới.</div>
+      <div class="scene-top"><span class="scene-tag">VĂN PHÒNG 3D</span><button id="reset-camera" class="scene-reset">↺ Góc nhìn</button></div>
+      <div id="empty-scene" class="empty-scene"><span>✦</span><h2>Mở phòng làm việc đầu tiên</h2><p>Kết nối repo local và đặt tên cho nhân viên của bạn.</p><button id="empty-add" class="primary">Thêm project</button></div>
+      <div class="scene-bottom"><span><i class="green-dot"></i> Đang làm <i class="amber-dot"></i> Cần bạn <i class="grey-dot"></i> Sẵn sàng</span><span>Kéo xoay · Cuộn phóng to · Bấm phòng để chọn</span></div>
+    </section>
+    <section id="project-detail" class="project-detail" hidden>
+      <div><div class="eyebrow">PHÒNG ĐANG CHỌN</div><h2 id="project-name"></h2><p id="project-path" class="mono"></p></div>
+      <div class="employee-card"><span class="avatar">⌘</span><div><strong id="employee-name"></strong><small id="employee-status">Sẵn sàng nhận việc</small></div><button id="rename" class="quiet">Đổi tên</button></div>
+      <button id="new-task" class="primary">＋ Giao việc</button>
+    </section>
+    <section class="task-section"><div class="section-heading"><h2>Công việc <span id="task-count" class="count">0</span></h2><span id="task-subtitle">Chọn một phòng để xem công việc</span></div>
+      <div id="task-list" class="task-list"><div class="empty-tasks">Chưa có công việc. Thêm project để bắt đầu.</div></div>
+    </section>
+  </section>
+</main>
+<div id="toast" role="status" hidden></div>
+<dialog id="project-dialog"><form id="project-form">
+  <div class="dialog-heading"><div><div class="eyebrow">PHÒNG MỚI</div><h2>Kết nối một dự án</h2></div><button type="button" class="close" data-close>×</button></div>
+  <label>Tên project<input name="name" required maxlength="100" placeholder="VD: Inventory Service"></label>
+  <label>Đường dẫn repo local<input name="path" required placeholder="/home/tien/projects/inventory" class="mono"></label>
+  <label>Tên nhân viên<input name="employeeName" required maxlength="100" placeholder="VD: An · Backend"></label>
+  <div class="form-row"><label>Git remote<input name="remote" required value="origin"></label><label>Nhánh gốc feature<input name="featureBase" required value="master"></label></div>
+  <p class="help">Dùng repo Git có sẵn trên máy chạy server. Thêm phòng chỉ đọc thông tin repo; chưa chạy Codex.</p>
+  <p class="form-error" role="alert"></p><button class="primary full">Tạo phòng làm việc</button>
+</form></dialog>
+<dialog id="rename-dialog"><form id="rename-form"><div class="dialog-heading"><h2>Đặt tên nhân viên</h2><button type="button" class="close" data-close>×</button></div><label>Tên hiển thị<input name="name" required maxlength="100"></label><p class="help">Tên này độc lập với username Git của quản lý.</p><p class="form-error" role="alert"></p><button class="primary full">Lưu tên</button></form></dialog>
+<dialog id="create-dialog"><form id="create-form"><div class="dialog-heading"><div><div class="eyebrow">GIAO VIỆC CHO NHÂN VIÊN</div><h2>Hôm nay cần làm gì?</h2></div><button type="button" class="close" data-close>×</button></div><label>Tiêu đề<input name="title" required maxlength="200" placeholder="VD: Thêm API lấy dụng cụ"></label><label>Yêu cầu<textarea name="request" required rows="6" maxlength="20000" placeholder="Mô tả kết quả mong muốn, điều kiện nghiệp vụ và cách kiểm tra…"></textarea></label><p class="help">Nhân viên sẽ hỏi lại task ID trước khi tạo nhánh và bắt đầu làm.</p><p class="form-error" role="alert"></p><button class="primary full">Gửi yêu cầu</button></form></dialog>
+<dialog id="task-dialog" class="task-dialog">
+  <div class="dialog-heading"><div><div id="task-id-label" class="eyebrow"></div><h2 id="task-title"></h2></div><button type="button" class="close" data-close>×</button></div>
+  <div id="task-meta" class="task-meta"></div><p id="task-request" class="preserve"></p>
+  <div id="task-error" class="notice error" hidden></div>
+  <form id="confirm-form" hidden><div class="notice"><strong id="confirm-question"></strong><p>Chưa có code hoặc nhánh nào được tạo. Xác nhận ID để xếp hàng chạy.</p></div><label>Task ID<input name="taskId" required maxlength="100" placeholder="VD: DA-int" pattern="[A-Za-z0-9][A-Za-z0-9._\-]*"></label><label class="checkbox"><input name="confirmed" type="checkbox" required>Tôi xác nhận ID cho task này</label><p class="form-error" role="alert"></p><button class="primary">Xác nhận & bắt đầu</button></form>
+  <div id="task-report" class="report" hidden></div>
+  <div id="task-branches" class="notice" hidden></div>
+  <div class="task-actions"><button id="stop-task" class="danger" hidden>Dừng task</button></div>
+  <form id="continue-form" hidden><label id="continue-label">Yêu cầu sửa hoặc trả lời nhân viên<textarea name="message" required rows="3" maxlength="20000" placeholder="Bổ sung yêu cầu hoặc nhập ‘Tiếp tục công việc còn dở’…"></textarea></label><p class="form-error" role="alert"></p><button class="primary">Gửi & tiếp tục</button></form>
+  <details id="run-details" open><summary>Lịch sử lượt chạy & log</summary><div id="runs"></div><pre id="run-log" class="run-log" aria-label="Log Codex"></pre></details>
+</dialog>
+<script type="module" src="/office-ui.js"></script>
+</body></html>

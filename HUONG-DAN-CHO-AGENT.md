@@ -4,7 +4,7 @@
 
 ## 0. Ranh giới an toàn (đọc trước)
 
-- Văn phòng **chỉ đọc** nhật ký phiên trong `~/.claude` và `~/.codex`. Không gửi dữ liệu ra ngoài, không cần khóa API.
+- Chế độ legacy chỉ đọc nhật ký phiên trong `~/.claude` và `~/.codex`. Trang chính mới điều khiển Codex CLI theo task; xem phần MVP trong README. Codex dùng tài khoản/provider local đã đăng nhập; không cần thêm API key cho văn phòng.
 - **Hỏi chủ trước khi** làm 4 việc sau:
   - tải hoặc cài phần mềm, ví dụ Node.js hay cloudflared;
   - sửa `AGENTS.md` / `CLAUDE.md` của dự án (bước 5);
@@ -19,7 +19,7 @@
 node -v
 ```
 
-Cần bản 18 trở lên. Máy chưa có Node thì dừng và nhờ chủ cài bản LTS ở https://nodejs.org. Đừng tự tải nếu chủ chưa đồng ý.
+Cần bản 22.13 trở lên. Máy chưa có Node thì dừng và nhờ chủ cài bản LTS ở https://nodejs.org. Đừng tự tải nếu chủ chưa đồng ý.
 
 Kiểm tra có nhật ký để đọc:
 - Claude Code ghi ở `~/.claude/projects/`.
@@ -28,11 +28,11 @@ Kiểm tra có nhật ký để đọc:
 ## 2. Tải mã về (đặt ngoài thư mục dự án)
 
 ```bash
-git clone https://github.com/vinaichatbot-rgb/van-phong-ao-3d.git ~/van-phong-ao-3d
+git clone https://github.com/tiennm0510/van-phong-ao-3d.git ~/van-phong-ao-3d
 cd ~/van-phong-ao-3d
 ```
 
-Trên Windows nên dùng một đường dẫn không có dấu, ví dụ `C:/van-phong-ao-3d`. Kho này **không cần `npm install`**, vì không dùng thư viện ngoài nào.
+Trên Windows nên dùng một đường dẫn không có dấu, ví dụ `C:/van-phong-ao-3d`. Chạy `npm install` để cài dependency và chuẩn bị Three.js/font local, sau đó sao chép `.env.example` thành `.env` nếu chưa có. Username Git mặc định là `tiennm55`; chỉnh trong `.env` trước khi setup.
 
 ## 3. Cài đặt không hỏi
 

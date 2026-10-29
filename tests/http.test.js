@@ -1,0 +1,32 @@
+"use strict";
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const os = require("node:os");
+const http = require("node:http");
+const { Office } = require("../lib/office");
+const officeApi = require("../lib/office-api");
+
+test("HTTP/SSE contract exposes state while rejecting unsafe writes", async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "office-http-"));
+  const office = new Office({ dataDir: dir, policy: { managerUsername: "tiennm55", featureBase: "master" } });
+  const clients = new Set();
+  const server = http.createServer((req, res) => { officeApi.handle(req, res, new URL(req.url, "http://x"), office, clients).catch(e => { res.writeHead(500); res.end(e.message); }); });
+  await new Promise(r => server.listen(0, "127.0.0.1", r));
+  t.after(async () => { for (const client of clients) client.end(); server.closeAllConnections(); await new Promise(r => server.close(r)); await office.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}/api/office`;
+  const state = await fetch(base + "/state"); assert.equal(state.status, 200); assert.deepEqual((await state.json()).projects, []);
+  const denied = await fetch(base + "/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  assert.equal(denied.status, 403);
+  const invalid = await fetch(base + "/projects", { method: "POST", headers: { "Content-Type": "application/json", "X-Office-Client": "local-ui" }, body: "not JSON" });
+  assert.equal(invalid.status, 400);
+  const external = await fetch(base + "/projects", { method: "POST", headers: { "Content-Type": "application/json", "X-Office-Client": "local-ui", Origin: "https://example.invalid" }, body: "{}" });
+  assert.equal(external.status, 403);
+  const controller = new AbortController();
+  const stream = await fetch(base + "/events", { signal: controller.signal });
+  assert.equal(stream.headers.get("content-type"), "text/event-stream");
+  const reader = stream.body.getReader(); const chunk = await reader.read();
+  const event = new TextDecoder().decode(chunk.value); assert(event.startsWith("data: ")); assert(JSON.parse(event.slice(6)).settings);
+  await reader.cancel(); controller.abort();
+});
